@@ -1,53 +1,49 @@
 import { IgApiClient } from 'instagram-private-api';
-import { CONFIG } from '../config';
-import { logger } from '../utils/logger';
+import { handleDynamicCommand } from '@utils/dynamicCommands';
+import { commandStore } from '@utils/commandLoader';
+import { PREFIX } from '@src/config';
+import { logger } from '@utils/logger';
 
-export const listenMessages = async (ig: IgApiClient) => {
-    logger.info("Escuta de mensagens iniciada (Modo Estável) - " + CONFIG.EVENT_IN_MILLISECONDS + "ms");
-    
-    const processedIds = new Set<string>();
+const processedMessages = new Set<string>();
+
+export const onMessagesUpsert = async (ig: IgApiClient) => {
+    logger.warn("🔄 Modo Polling (Intervalo) Reativado.");
 
     setInterval(async () => {
         try {
-            // Usando directInbox().items() de forma filtrada ou directThread
-            // Para evitar o erro 404 de suggested_searches, acessamos os itens diretamente
-            const inboxFeed = ig.feed.directInbox();
-            const threads = await inboxFeed.items();
+            const inbox = ig.feed.directInbox();
+            const threads = await inbox.items();
 
             for (const thread of threads) {
-                // Pegamos a última mensagem da conversa
-                const lastMessage = thread.items[0];
+                const message = thread.items[0];
 
-                if (!lastMessage || lastMessage.item_type !== 'text') continue;
-                if (processedIds.has(lastMessage.item_id)) continue;
+                if (!message || String(message.user_id) === String(ig.state.cookieUserId)) continue;
+                if (processedMessages.has(message.item_id)) continue;
 
-                const text = lastMessage.text;
+                const text = (message.text || "").trim();
 
-                if (text.startsWith(CONFIG.PREFIX)) {
-                    const args = text.slice(CONFIG.PREFIX.length).trim().split(/ +/);
-                    const commandName = args.shift()?.toLowerCase();
-                    
-                    logger.bot(`Comando [${commandName}] de: ${thread.users[0].username}`);
+                if (text.startsWith(PREFIX)) {
+                    logger.info(`[INBOX] Mensagem de @${message.user_id}: ${text}`);
+                    processedMessages.add(message.item_id);
+                    await handleDynamicCommand(ig, thread, message, commandStore.commands);
+                }
 
-                    if (commandName === 'ping') {
-                        // Resposta direta na thread
-                        await ig.entity.directThread(thread.thread_id).broadcastText('🏓 Pong! O bot do Mrx está voando! 🚀');
-                        logger.success(`Resposta enviada para ${thread.users[0].username}`);
-                    }
-                    
-                    // Salva como processada
-                    processedIds.add(lastMessage.item_id);
+                // Limpa memória
+                if (processedMessages.size > 150) {
+                    const iterator = processedMessages.values();
+                    processedMessages.delete(iterator.next().value);
                 }
             }
-
-            // Limpeza de cache para não estourar a memória do Termux
-            if (processedIds.size > 100) processedIds.clear();
-
         } catch (e: any) {
-            // Ignora erros de 404 de busca sugerida, foca no que importa
-            if (!e.message.includes('404')) {
-                logger.error("Erro no pooling: " + e.message);
+            if (!e.message.includes("403")) {
+                logger.error("Erro no Polling: " + e.message);
             }
         }
-    }, CONFIG.EVENT_IN_MILLISECONDS);
+    }, 3500); // 3.5 segundos é o equilíbrio entre velocidade e segurança
+
+    logger.success("🚀 Bot pronto e ouvindo via Inbox!");
+};
+
+export const stopMessagesUpsert = () => {
+    logger.warn("🛑 Listener parado.");
 };

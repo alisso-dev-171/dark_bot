@@ -1,10 +1,11 @@
 import { Command, CommandParams } from "../../models/commands";
+import { PREFIX } from "../../config";
 
 export default {
     name: "ping",
     description: "Verifica a latência e o tempo online do bot",
     commands: ["ping", "pong"],
-    usage: "!ping ou !pong",
+    usage: `${PREFIX}ping`,
     handle: async ({ sendText, sendReact, getUptime, fullArgs }: CommandParams) => {
         const start = Date.now();
         

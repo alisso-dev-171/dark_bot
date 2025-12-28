@@ -1,4 +1,5 @@
 import { readdirSync, statSync } from 'fs';
+import * as readline from 'readline';
 import axios from "axios";
 import path from 'path';
 
@@ -18,6 +19,41 @@ export const readAndImportCommands = async (dir: string): Promise<any[]> => {
         }
     }
     return results;
+};
+
+const Roxo = "\x1b[35m";
+const Azul = "\x1b[34m";
+const Branco = "\x1b[37m";
+const Reset = "\x1b[0m";
+const Negrito = "\x1b[1m";
+
+/**
+ * Retorna a hora atual formatada para o padrão brasileiro (HH:mm:ss)
+ */
+export const current_time = (): string => {
+  return new Date().toLocaleTimeString("pt-BR");
+};
+
+/**
+ * Retorna a data atual formatada para o padrão brasileiro (DD/MM/AAAA)
+ */
+export const current_date = (): string => {
+  return new Date().toLocaleDateString("pt-BR");
+};
+
+/**
+ * Faz uma pergunta estilizada no terminal e retorna a resposta
+ */
+export const question = (text: string): Promise<string> => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    
+    const prompt = `${Branco}[${Roxo}DARK${Branco}@${Azul}BOT${Branco}] ${Branco}${text}: ${Negrito}`;
+    
+    return new Promise(resolve => rl.question(prompt, answer => {
+        process.stdout.write(Reset);
+        rl.close();
+        resolve(answer);
+    }));
 };
 
 /**

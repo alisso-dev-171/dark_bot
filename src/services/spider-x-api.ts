@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { CONFIG } from '../config';
-import { logger } from '../utils/logger';
+import { CONFIG } from 'src/config';
+import { logger } from 'src/utils/logger';
 
 export class SpiderService {
     private baseURL: string;
@@ -24,7 +24,7 @@ export class SpiderService {
             });
 
             if (response.data && response.data.url) {
-                return response.data.url; // Retorna o link direto do vídeo/imagem
+                return response.data.url;
             }
             throw new Error("URL de download não encontrada na resposta.");
         } catch (e: any) {

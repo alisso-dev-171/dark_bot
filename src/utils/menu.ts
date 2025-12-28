@@ -1,18 +1,35 @@
-import { version } from "../../package.json";
+import { PREFIX, BOT_NAME, VERSION, OWNER_AT } from '@src/config';
+import { current_time, current_date } from ".";
 
-export const createMenu = (prefix: string) => {
-
+export const createMenu = () => {
     return `
-╭━━⪼ 🤖 MRX BOT MENU
+╭━━⪼ 🤖 ${BOT_NAME.toUpperCase()}
 ┃
-┃ 🔧 Utilitários
-┃ ➥ ${prefix}ping
-┃ ➥ ${prefix}raw
-┃ ➥ ${prefix}reels
+┃ • BEM-VINDO!
 ┃
-┃ 👥 Grupo
-┃ ➥ ${prefix}ban
-┃ • Versão ${version}
-╰━━⪼ 
+┃ • DATA: ${current_date()}
+┃ • HORA: ${current_time()}
+┃
+┃ • prefixo: [ ${PREFIX} ]
+┃
+┃ 🫅🏻 DOMO
+┃ ➥ ${PREFIX}on
+┃ ➥ ${PREFIX}off
+┃ ➥ ${PREFIX}test
+┃
+┃ ❇️ COMANDOS
+┃ ➥ ${PREFIX}ping
+┃ ➥ ${PREFIX}raw
+┃ ➥ ${PREFIX}menu
+┃ ➥ ${PREFIX}get-id
+┃ ➥ ${PREFIX}perfil
+┃
+┃ 👑 ADMINS
+┃ ➥ ${PREFIX}anti-link
+┃ 
+┃ ℹ️ Info
+┃ ➥ Versão: ${VERSION}
+┃ ➥ Owner: ${OWNER_AT}
+╰━━⪼
 `.trim();
 };

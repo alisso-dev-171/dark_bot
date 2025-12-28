@@ -1,20 +1,33 @@
-import { connectInstagram } from './core/connection';
-import { startPolling } from './core/monitor';
-import { startCommandWatcher } from './utils/commandLoader';
-import { logger } from './utils/logger';
+import { onMessagesUpsert } from '@middlewares/onMessagesUpsert';
+import { startCommandWatcher } from "@utils/commandLoader";
+import { connectInstagram } from '@core/connection';
+import { startHotReload } from '@utils/hotReload';
+import { logger } from '@utils/logger';
 
 export const BOOT_TIME = Date.now();
+let isStarted = false;
 
-const main = async () => {
+const startBot = async () => {
+    if (isStarted) return;
+    isStarted = true;
+
     try {
-        logger.info("🚀 Iniciando Bot");
-        const bot = await connectInstagram();
+        logger.info("🚀 Iniciando o bot...");
+        const bot = await connectInstagram();        
+        await bot.account.currentUser(); 
+
         startCommandWatcher();
-        await startPolling(bot);
-    } catch (err) {
-        logger.error("Erro Fatal: " + err);
-        process.exit(1);
+
+        onMessagesUpsert(bot);
+       	startHotReload(bot);
+
+    } catch (err: any) {
+        logger.error("🛑 Erro Fatal: " + err.message);
+        if (err.message.includes("sessionid")) {
+             logger.warn("Sessão inválida. Delete o arquivo session.json e reinicie.");
+        }
+        isStarted = false;
     }
 };
 
-main();
+startBot();

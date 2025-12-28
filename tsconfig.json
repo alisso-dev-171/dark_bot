@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+  	"baseUrl": "./",
     "target": "ES6",
     "module": "CommonJS",
     "moduleResolution": "node",
@@ -7,6 +8,18 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": false,
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "paths": {
+    	"@src/*": ["src/*"],
+    	"@core/*": ["src/core/*"],
+    	"@utils/*": ["src/utils/*"],
+    	"@models/*": ["src/models/*"],
+    	"@errors/*": ["src/errors/*"],
+    	"@assets/*": ["src/assets/*"],
+    	"@services/*": ["src/services/*"],
+    	"@database/*": ["src/database/*"],
+    	"@commands/*": ["src/commands/*"],
+    	"@middlewares/*": ["src/middlewares/*"]
+    }
   }
 }

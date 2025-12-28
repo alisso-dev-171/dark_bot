@@ -1,52 +1,55 @@
-import { IgApiClient } from 'instagram-private-api';
 import { writeFileSync, readFileSync, existsSync } from 'fs';
-import { CONFIG } from '../config';
-import { logger } from '../utils/logger';
-import * as readline from 'readline';
+import { IgApiClient } from 'instagram-private-api';
+import { USERNAME, PASSWORD, SESSION_PATH } from '@src/config';
+import { handleLoginErrors } from '@errors/checkpoints';
+import { logger } from '@utils/logger';
+import { question } from '@utils/index';
 
 const ig = new IgApiClient();
-const SESSION_PATH = './src/assets/auth/session.json';
-
-const ask = (question: string): Promise<string> => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    return new Promise(resolve => rl.question(question, answer => {
-        rl.close();
-        resolve(answer);
-    }));
-};
 
 export const connectInstagram = async (): Promise<IgApiClient> => {
     if (existsSync(SESSION_PATH)) {
         try {
-            logger.info("Restaurando sessão...");
             const sessionData = readFileSync(SESSION_PATH, 'utf-8');
             await ig.state.deserialize(sessionData);
-            await ig.account.currentUser();
-            logger.success("Sessão ativa!");
+            logger.success("✅ Sessão carregada do cache!");
             return ig;
         } catch (e) {
-            logger.error("Sessão inválida. Novo login necessário.");
+            logger.error("❌ Sessão corrompida. Fazendo login manual...");
         }
     }
 
-    const user = CONFIG.USERNAME || await ask("Usuário: ");
-    const pass = CONFIG.PASSWORD || await ask("Senha: ");
+    const user = USERNAME || await question("Seu Usuário");
+    const pass = PASSWORD || await question("Sua Senha");
+
     ig.state.generateDevice(user);
 
     try {
+        logger.info("🔐 Iniciando novo login...");
         await ig.simulate.preLoginFlow();
         const loggedInUser = await ig.account.login(user, pass);
-        logger.success(`Logado como: @${loggedInUser.username}`);
+        
+        process.nextTick(async () => {
+            try { await ig.simulate.postLoginFlow(); } catch (e) {}
+        });
 
-        // Sincronização segura
-        await ig.account.currentUser();
-        
+        logger.success(`✨ Logado como: @${loggedInUser.username}`);
+
         const serialized = await ig.state.serialize();
+        delete serialized.constants;
         writeFileSync(SESSION_PATH, JSON.stringify(serialized));
-        
+
         return ig;
     } catch (err: any) {
-        logger.error("Erro no login: " + err.message);
-        process.exit(1);
+        try {
+            await handleLoginErrors(ig, err);
+            const serialized = await ig.state.serialize();
+            delete serialized.constants;
+            writeFileSync(SESSION_PATH, JSON.stringify(serialized));
+            return ig;
+        } catch (checkpointErr: any) {
+            logger.error("❌ Falha no login: " + checkpointErr.message);
+            process.exit(1);
+        }
     }
 };

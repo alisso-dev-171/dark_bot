@@ -1,32 +1,70 @@
-import { Command, CommandParams } from "../../models/commands";
-import { CONFIG } from "../../config";
+import { Command } from "../../models/commands";
+import { logger } from "../../utils/logger";
+import { PREFIX } from "../../config";
 
 export default {
     name: "reels",
-    description: "Baixa vídeos do Instagram Reels ou Posts",
-    commands: ["reels", "ig", "baixar"],
-    usage: `${CONFIG.PREFIX}reels https://www.instagram.com/reels/xyz/`,
-    handle: async ({ args, sendText, sendVideo, getMediaInfo, sendWaitReact, sendSuccessReact, sendErrorReact }: CommandParams) => {
-        const url = args[0];
-        
-        if (!url) {
-            return await sendText("❌ Por favor, forneça um link.\nUso: !reels [link]");
+    commands: ["ig", "baixar", "video", "reel"],
+    description: "Baixa vídeos e fotos do Instagram/Reels",
+    usage: `${PREFIX}ig [link]`,
+    handle: async ({ 
+        args, 
+        sendText, 
+        sendVideo, 
+        sendImage, 
+        getMediaInfo, 
+        sendWaitReact, 
+        sendSuccessReact, 
+        sendErrorReact 
+    }) => {
+        const rawUrl = args[0];
+
+        if (!rawUrl) {
+            await sendText("⚠️ Envie o link do Reels ou Post. Ex: !ig https://instagram.com/p/...");
+            return;
+        }
+
+        if (!rawUrl.includes("instagram.com")) {
+            await sendText("❌ Isso não parece um link do Instagram.");
+            return;
         }
 
         try {
-            await sendWaitReact(); 
+            await sendWaitReact();
+            logger.info(`📥 Iniciando download: ${rawUrl}`);
 
-            const mediaData = await getMediaInfo(url);
-            const videoUrl = mediaData.items[0].video_versions?.[0]?.url;
+            // 2. Limpeza básica da URL (mantém o https)
+            const url = rawUrl.trim();
 
-            if (!videoUrl) throw new Error("Vídeo não encontrado.");
+            // 3. Obtendo Mídia
+            const media: any = await getMediaInfo(url);
 
-            await sendVideo(videoUrl);
+            if (!media || !media.url) {
+                throw new Error("API retornou dados vazios.");
+            }
+
+            logger.info(`✅ Mídia encontrada! Tipo: ${media.isVideo ? 'Vídeo' : 'Imagem'}`);
+
+            // 4. Envio
+            if (media.isVideo) {
+                await sendVideo(media.url);
+            } else {
+                await sendImage(media.url);
+            }
+
             await sendSuccessReact();
 
         } catch (e: any) {
+            logger.error(`[IG ERROR]: ${e.message}`);
             await sendErrorReact();
-            await sendText(`⚠️ Erro: ${e.message}`);
+
+            if (e.message.includes("privada") || e.message.includes("Login required")) {
+                await sendText("🔒 Esta conta é privada ou o link expirou.");
+            } else if (e.message.includes("Timeout")) {
+                await sendText("⏱️ O Instagram demorou para responder. Tente novamente.");
+            } else {
+                await sendText(`❌ Erro ao baixar: ${e.message}`);
+            }
         }
     }
-};
+} as Command;
